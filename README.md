@@ -20,4 +20,34 @@ Data Set Mortgage is a complex longitudinal (panel) dataset with 655,489 rows an
 
 - Variable capturing the borrower’s past credit history: FICO credit score 
 
-- Variables capturing loan status: indicator variable for default, indicator variable for payoff (loan repaid or not), status (default, payoff and non-default/non-payoff) 
+- Variables capturing loan status: indicator variable for default, indicator variable for payoff (loan repaid or not), status (default, payoff and non-default/non-payoff)
+
+## Research questions
+Primary Research Question: What variables can be used in predicting mortgage defaults and what classification models provide the best predictions?
+Supporting Research Questions:
+
+1.	How does the economic environment, or change in macro environment over time, impact mortgage performance?
+2.	Can accurate default predictions be achieved without expectations of a future change in the macroeconomic environment?
+3.	To what extent does additional loan structure and borrower information assist in identifying potential defaults? i.e. are a wide range of variables more useful than a small number of key variables?
+   
+## Modelling methodology
+
+Data wrangling
+
+Notwithstanding the panel data available, we do not seek to conduct an in depth time series analysis as our interest is in whether the loan ultimately defaults or not, and not its performance over time. As such we will wrangle the dataset down to 50,000 observations.
+We will nonetheless be able to draw information from other rows in the original >655,000 dataset through data transformations. We expect to create additional independent variables representing the change in variable value over time. For example, a change in interest rate over time from 5% to 8% (+3% change), will be more likely to see a default than a movement from 5% to 6% (+1% change) as the borrowers would have been comfortable servicing the loan initially but get into mortgage stress when rates rise significantly.
+It would however need to be understood when using the model for prediction in the real world that such variables (like changes in interest rates) would need to be the expected future change in the variable given the change won’t yet have been experienced. That is, our data will be backward looking, whereas we are seeking to achieve forward looking predictions.
+
+Data mining & statistical learning methods
+
+Given a default is binomial outcome and our dependent variable is an indicator variable (the loan either performs and is repaid or else it defaults), classification modelling will be appropriate. We expect to experiment with the following classification methods:
+- Logistic regression
+- Kth nearest neighbour (KNN)
+- Linear discriminant analysis (LDA)
+- Quadratic discriminant analysis (QDA)
+- Naïve Bayes
+- Support vector machine
+- Decision trees, including through boosting or bagging
+- Random forest
+
+
