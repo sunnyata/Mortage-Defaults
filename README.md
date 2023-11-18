@@ -35,13 +35,13 @@ Supporting Research Questions:
 
 Data wrangling
 
-Notwithstanding the panel data available, we do not seek to conduct an in depth time series analysis as our interest is in whether the loan ultimately defaults or not, and not its performance over time. As such we will wrangle the dataset down to 50,000 observations.
-We will nonetheless be able to draw information from other rows in the original >655,000 dataset through data transformations. We expect to create additional independent variables representing the change in variable value over time. For example, a change in interest rate over time from 5% to 8% (+3% change), will be more likely to see a default than a movement from 5% to 6% (+1% change) as the borrowers would have been comfortable servicing the loan initially but get into mortgage stress when rates rise significantly.
-It would however need to be understood when using the model for prediction in the real world that such variables (like changes in interest rates) would need to be the expected future change in the variable given the change won’t yet have been experienced. That is, our data will be backward looking, whereas we are seeking to achieve forward looking predictions.
+Notwithstanding the panel data available, I do not seek to conduct an in depth time series analysis as my primary interest is in whether the loan ultimately defaults or not, and not its performance over time. As such, I will wrangle the dataset down to 50,000 observations.
+I will nonetheless be able to draw information from other rows in the original >655,000 dataset through data transformations. I expect to create additional independent variables representing the change in variable value over time. For example, a change in interest rate over time from 5% to 8% (+3% change), will be more likely to see a default than a movement from 5% to 6% (+1% change) as the borrowers would have been comfortable servicing the loan initially but get into mortgage stress when rates rise significantly.
+It would however need to be understood when using the model for prediction in the real world that such variables (like changes in interest rates) would need to be the expected future change in the variable given the change won’t yet have been experienced. That is, the data will be backward looking, whereas the goal is to achieve forward looking predictions.
 
 Data mining & statistical learning methods
 
-Given a default is binomial outcome and our dependent variable is an indicator variable (the loan either performs and is repaid or else it defaults), classification modelling will be appropriate. We expect to experiment with the following classification methods:
+Given that a default is a binomial outcome making the dependent variable an indicator variable (the loan either performs and is repaid or else it defaults), classification modelling will be appropriate. I plan to to experiment with the following classification methods:
 - Logistic regression
 - Kth nearest neighbour (KNN)
 - Linear discriminant analysis (LDA)
