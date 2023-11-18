@@ -1,0 +1,415 @@
+---
+title: "Mortage Default Analysis and Prediction"
+date: "Nov 18, 2023"
+output: html_document
+df_print: paged
+---
+
+```{r, global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+setwd("***")
+```
+
+```{r Part 1, echo=TRUE, warning=FALSE, cache=TRUE}
+suppressMessages(library(car))
+suppressMessages(library(dplyr))
+suppressMessages(library(tidyr))
+suppressMessages(library(ggplot2))
+suppressMessages(library(corrplot))
+suppressMessages(library(olsrr))
+suppressMessages(library(MASS))
+suppressMessages(library(pls))
+suppressMessages(library(lars))
+suppressMessages(library(psych))
+suppressMessages(library(randomForest))
+suppressMessages(library(caret))
+suppressMessages(library(readxl))
+
+mort <- read_xlsx(path = "mort1_main_model_ variables.xlsx")
+summary(mort)
+corPlot(mort, addCoef.col = 1, cex = 0.5, cl.cex = 0.5, tl.cex=0.5, xlas=2)
+
+colnames(mort)[17] ="default"
+
+#Convert binary predictors and response columns to categorical vars
+mort <- mort %>% mutate_at(c('REtype_CO_orig', 'REtype_PU_orig', 'REtype_SF_orig', 'default'), as.factor)
+
+str(mort)
+
+mort <- as.data.frame(mort)
+# 
+# ggplot(data = mort) +
+#   geom_histogram(mapping = aes(x = HPI_change_orig_x), binwidth = 5)
+# 
+# require(gridExtra)
+# p1 <- ggplot(data = mort) + 
+#   geom_boxplot(mapping = aes(x = default , y = FICO_orig)) +
+#   labs(y = "FICO", x= "Default")
+# 
+# p2 <- ggplot(data = mort) + 
+#   geom_boxplot(mapping = aes(x = default , y = balance_orig)) +
+#   labs(y = "Balance", x= "Default")
+# 
+# p3 <- ggplot(data = mort) + 
+#   geom_boxplot(mapping = aes(x = default , y = HPI_change_orig_x)) +
+#   labs(y = "HPI Change", x= "Default")
+# 
+# p4 <- ggplot(data = mort) + 
+#   geom_boxplot(mapping = aes(x = default , y = HPI_change_orig_x)) +
+#   labs(y = "IR Change", x= "Default")
+# 
+# grid.arrange(p1, p2, p3, p4, ncol=2)
+
+#pairs(mort, upper.panel = NULL)
+
+# Creating training and test data split
+set.seed(93285)
+### Split the data into training and testing samples
+n = dim(mort)[1]; ### total number of observations
+n1 = round(n*0.3); ### number of observations randomly selected for testing data
+
+flag <- sort(sample(1:n, n1));
+mort.test <- mort[flag,];
+mort.train <- mort[-flag,];
+
+```
+
+```{r Part 1 RF, echo=TRUE, warning=FALSE, cache=TRUE}
+
+### (6) RF
+rf <- randomForest(default~., data=mort.train, ntree=500)#, proximity=TRUE) 
+print(rf)
+
+# Error rate for training data
+p1 <- predict(rf, mort.train)
+confusionMatrix(p1, mort.train$default)
+
+error1 <- mean( predict(rf, newdata = mort.train[-17]) != mort.train$default)
+
+# Error rate for testing data
+p2 <- predict(rf, mort.test)
+confusionMatrix(p2, mort.test$default)
+
+error2 <- mean( predict(rf, newdata = mort.test[-17]) != mort.test$default)
+
+plot(rf)
+
+# Parameter Tuning
+# The number of variables selected at each split is denoted by mtry in randomforest function.
+t <- tuneRF(mort.train[,-17], mort.train[,17],
+       stepFactor = 0.5,
+       plot = TRUE,
+       ntreeTry = 500,
+       trace = TRUE,
+       improve = 0.05)
+
+best.m <- t[t[, 2] == min(t[, 2]), 1]
+print(t)
+print(best.m)
+
+hist(treesize(rf),
+     main = "No. of Nodes for the Trees",
+     col = "green")
+# Variable Importance
+varImpPlot(rf,
+           sort = T,
+           n.var = 10,
+           main = "Top 10 - Variable Importance")
+
+#MeanDecreaseGini
+importance(rf)
+
+
+partialPlot(rf, mort.train, HPI_change_orig_x, "1")
+# The inference should be, if the HPI_change_orig_x is negative then higher chances of classifying into default=1 class.
+
+# How to find the optimal maxnode value
+
+trControl <- trainControl(method = "cv",
+    number = 10,
+    search = "grid")
+store_maxnode <- list()
+tuneGrid <- expand.grid(.mtry = best.m)
+for (maxnodes in c(5: 20)) {
+    set.seed(1234)
+    rf_maxnode <- train(default~.,
+        data = mort.train,
+        method = "rf",
+        metric = "Accuracy",
+        tuneGrid = tuneGrid,
+        trControl = trControl,
+        importance = TRUE,
+        nodesize = 14,
+        maxnodes = maxnodes,
+        ntree = 300)
+    current_iteration <- toString(maxnodes)
+    store_maxnode[[current_iteration]] <- rf_maxnode
+}
+results_mtry <- resamples(store_maxnode)
+summary(results_mtry)
+
+# Best number of trees
+
+```
+
+```{r Part 2 RF, echo=TRUE, warning=FALSE, cache=TRUE}
+store_maxtrees <- list()
+for (ntree in c(350, 400, 450, 500, 550, 600, 800, 1000)) {
+    set.seed(5678)
+    rf_maxtrees <- train(default~.,
+        data = mort.train,
+        method = "rf",
+        metric = "Accuracy",
+        tuneGrid = tuneGrid,
+        trControl = trControl,
+        importance = TRUE,
+        nodesize = 14,
+        maxnodes = 24,
+        ntree = ntree)
+    print(ntree)
+    key <- toString(ntree)
+    store_maxtrees[[key]] <- rf_maxtrees
+}
+results_tree <- resamples(store_maxtrees)
+summary(results_tree)
+```
+
+
+
+
+
+```{r Part 3 RF2, echo=TRUE, warning=FALSE, cache=TRUE}
+# Building new RF with optimal mtry value = 2
+rf2 <- randomForest(default~., data=mort.train, ntree=500, mtry=2）#maxnodes=20)#, proximity=TRUE) 
+print(rf2)
+
+# # Error rate for training data
+# p1 <- predict(rf2, mort.train)
+# confusionMatrix(p1, mort.train$default)
+# 
+# error1 <- mean( predict(rf2, newdata = mort.train[-17]) != mort.train$default)
+
+# Error rate for testing data
+p2 <- predict(rf2, mort.test)
+confusionMatrix(p2, mort.test$default)
+
+importance(rf2)
+error2 <- mean( predict(rf2, newdata = mort.test[-17]) != mort.test$default)
+error2
+```
+
+```{r Part 2 Boosting, echo=TRUE, warning=FALSE, cache=TRUE}
+library(gbm)
+
+gbm.mort <- gbm((as.integer(default) - 1) ~ ., data=mort.train,
+distribution = 'bernoulli',
+n.trees = 5000,
+shrinkage = 0.05,
+interaction.depth = 3,
+cv.folds = 10)
+
+## Model Inspection
+## Find the estimated optimal number of iterations
+perf_gbm1 = gbm.perf(gbm.mort, method="cv")
+perf_gbm1
+
+## Which variables are important?
+summary(gbm.mort)
+
+# ## Training error
+# pred1gbm <- predict(gbm.mort, newdata = mort.train[,-18], n.trees=perf_gbm1,
+# type="response")
+# y1hat <- ifelse(pred1gbm < 0.5, 0, 1)
+# mean(y1hat != mort.train$default) 
+## Testing error
+y2hat <- ifelse(predict(gbm.mort, newdata = mort.test[,-17],
+n.trees=perf_gbm1, type="response") < 0.5, 0, 1)
+mean(y2hat != mort.test$default)
+
+best <- which.min(gbm.mort$cv.error)
+
+
+```
+
+```{r Part 3A Boosting Parameter Tuning, echo=TRUE, warning=FALSE, cache=TRUE}
+# create grid search
+hyper_grid <- expand.grid(
+  learning_rate = c(0.3, 0.1, 0.05, 0.01, 0.005),
+  RMSE = NA,
+  trees = NA,
+  time = NA
+)
+
+# execute grid search
+for(i in seq_len(nrow(hyper_grid))) {
+
+  # fit gbm
+  set.seed(123)  # for reproducibility
+  train_time <- system.time({
+    m <- gbm(
+      formula = (as.integer(default) - 1) ~ ., 
+      data=mort.train,
+      distribution = "bernoulli",
+      n.trees = 5000, 
+      shrinkage = hyper_grid$learning_rate[i], 
+      interaction.depth = 3, 
+      n.minobsinnode = 10,
+      cv.folds = 10 
+   )
+  })
+  
+  # add SSE, trees, and training time to results
+  hyper_grid$RMSE[i]  <- sqrt(min(m$cv.error))
+  hyper_grid$trees[i] <- which.min(m$cv.error)
+  hyper_grid$Time[i]  <- train_time[["elapsed"]]
+
+}
+
+# results
+arrange(hyper_grid, RMSE)
+
+```
+
+
+```{r Part 3B Boosting Parameter Tuning 2, echo=TRUE, warning=FALSE, cache=TRUE}
+# search grid
+hyper_grid <- expand.grid(
+  n.trees = 6000,
+  shrinkage = 0.05,
+  interaction.depth = c(3, 5, 7),
+  n.minobsinnode = c(5, 10, 15)
+)
+
+# create model fit function
+model_fit <- function(n.trees, shrinkage, interaction.depth, n.minobsinnode) {
+  set.seed(123)
+  m <- gbm(
+      formula = (as.integer(default) - 1) ~ ., 
+      data=mort.train,
+      distribution = "bernoulli",
+      n.trees = n.trees,
+      shrinkage = shrinkage,
+      interaction.depth = interaction.depth,
+      n.minobsinnode = n.minobsinnode,
+      cv.folds = 10
+  )
+  # compute RMSE
+  sqrt(min(m$cv.error))
+}
+
+# perform search grid with functional programming
+hyper_grid$rmse <- purrr::pmap_dbl(
+  hyper_grid,
+  ~ model_fit(
+    n.trees = ..1,
+    shrinkage = ..2,
+    interaction.depth = ..3,
+    n.minobsinnode = ..4
+    )
+)
+
+# results
+arrange(hyper_grid, rmse)
+```
+
+```{r Part 4 Baseline, echo=TRUE, warning=FALSE, cache=TRUE}
+#E: A single Tree
+library(rpart)
+library(rpart.plot)
+modE0 <- rpart(default ~ .,data=mort.train, method="class", 
+                     parms=list(split="gini"))
+opt <- which.min(modE0$cptable[, "xerror"]); 
+cp1 <- modE0$cptable[opt, "CP"];
+modE <- prune(modE0,cp=cp1);
+y2hatE <-  predict(modE, mort.test[,-17],type="class")
+mean(y2hatE != mort.test$default)
+rpart.plot(modE)
+summary(modE)
+
+# NAIVE BAYES
+
+library(e1071)
+mod3 <- naiveBayes( mort.train[,-17], mort.train[,17])
+
+## Testing Error 
+mean( predict(mod3,mort.test[,-17]) != mort.test$default)
+
+# LOGISTIC
+
+mod4 <- glm(default~., family=binomial(link=logit), data=mort.train)
+summary(mod4)
+
+pred4test <- ifelse(predict(mod4, newdata=mort.test[,-17], type="response") >= 0.5, 1, 0)
+## Testing Error of (multinomial) logisitic regression
+mean( pred4test != mort.test$default)
+
+
+# STEPWISE LOGISTIC
+
+suppressMessages(library(psych))
+mort_glm <- glm(default~., family=binomial(link=logit), data=mort.train)
+mod5 <- stepAIC(mort_glm, trace=F);
+summary(mod5)
+
+pred5test <- ifelse(predict(mod5, newdata=mort.test[,-17], type="response") >= 0.5, 1, 0)
+## Testing Error of (multinomial) logisitic regression
+mean( pred5test != mort.test$default) 
+
+
+## KNN
+
+library(class);
+
+### Testing Error
+### read testing data
+## Testing error of KNN, and you can change the k values.
+xnew2 <- mort.test[,-17]; ## xnew2 is the X variables of the "testing" data
+cverror2 <- NULL;
+kk <- seq(1:15);
+
+for (k in kk){
+ypred2.test <- knn(mort.train[,-17], xnew2, mort.train[,17], k=k);
+cverror2 <- c(cverror2, mean( ypred2.test != mort.test[,17]));
+}
+
+cverror2 <- cbind(kk, cverror2)
+cverror2
+plot(cverror2, xlab = "K Value", ylab = "Testing Error")
+
+```
+
+```{r Part 5 Baseline LDA/QDA, echo=TRUE, warning=FALSE, cache=TRUE}
+# Reading in the data once again to reset the as.factor() colums back to numeric for LDA/QDA
+mort <- read_xlsx(path = "mort1_main_model_ variables.xlsx")
+colnames(mort)[17] ="default"
+mort <- as.data.frame(mort)
+# Creating training and test data split
+set.seed(93285)
+### Split the data into training and testing samples
+n = dim(mort)[1]; ### total number of observations
+n1 = round(n*0.3); ### number of observations randomly selected for testing data
+
+flag <- sort(sample(1:n, n1));
+mort.test <- mort[flag,];
+mort.train <- mort[-flag,];
+
+## Method 1: LDA
+
+mod1 <- lda(mort.train[,-17], mort.train[,17]); 
+summary(mod1)
+
+## testing error 
+pred1test <- predict(mod1,mort.test[,-17])$class; 
+mean(pred1test != mort.test$default);  
+
+
+## Method 2: QDA
+mod2 <- qda(mort.train[,-17], mort.train[,17])
+summary(mod2)
+
+##  Testing Error 
+pred2 <- predict(mod2,mort.test[,-17])$class
+mean(pred2 != mort.test$default)
+
+```
