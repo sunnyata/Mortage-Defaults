@@ -24,6 +24,7 @@ Data Set Mortgage is a complex longitudinal (panel) dataset with 655,489 rows an
 
 ## Research questions
 Primary Research Question: What variables can be used in predicting mortgage defaults and what classification models provide the best predictions?
+
 Supporting Research Questions:
 
 1.	How does the economic environment, or change in macro environment over time, impact mortgage performance?
