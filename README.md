@@ -14,10 +14,10 @@ Using publicly available data, I am building classification models to investigat
 Credit data is typically proprietary to banks and credit bureaus. One of the few sources of quality data is the Data Set Mortgage through Credit Risk Analytics, which can be accessed at: http://www.creditriskanalytics.net/datasets-private2.html .
 Data Set Mortgage is a complex longitudinal (panel) dataset with 655,489 rows and 23 columns, covering 50,000 unique mortgage loans and their performance over time across 60 time periods. It is a randomized selection of mortgage-loan-level data collected from the portfolios underlying U.S. residential mortgage-backed securities (RMBS) securitization portfolios. Data on each unique mortgage includes: 
 
-·	Information specific to the mortgage or property: variables on loan life (time since origination, time to maturity) loan balance, loan to property value (LTV) ratio, interest rate, real estate type (condominium or otherwise), development type (urban development or otherwise), home type (single family or otherwise), investor loan or otherwise 
+- Information specific to the mortgage or property: variables on loan life (time since origination, time to maturity) loan balance, loan to property value (LTV) ratio, interest rate, real estate type (condominium or otherwise), development type (urban development or otherwise), home type (single family or otherwise), investor loan or otherwise 
 
-·	Macroeconomic variables: gross domestic product (GDP) growth, unemployment rate, house price index 
+- Macroeconomic variables: gross domestic product (GDP) growth, unemployment rate, house price index 
 
-·	Variable capturing the borrower’s past credit history: FICO credit score 
+- Variable capturing the borrower’s past credit history: FICO credit score 
 
-·	Variables capturing loan status: indicator variable for default, indicator variable for payoff (loan repaid or not), status (default, payoff and non-default/non-payoff) 
+- Variables capturing loan status: indicator variable for default, indicator variable for payoff (loan repaid or not), status (default, payoff and non-default/non-payoff) 
